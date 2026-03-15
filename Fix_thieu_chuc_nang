@@ -1,0 +1,637 @@
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+local RS=game:GetService("RunService")
+local Lighting=game:GetService("Lighting")
+local VirtualUser=game:GetService("VirtualUser")
+local Http=game:GetService("HttpService")
+local TS=game:GetService("TeleportService")
+local Player=Players.LocalPlayer
+local Conn={}
+local SpeedVal=16
+local JumpVal=50
+local SavedPos=nil
+local Positions={}
+local function C(k) if Conn[k] then Conn[k]:Disconnect() Conn[k]=nil end end
+local function GetH() local c=Player.Character return c and c:FindFirstChildOfClass("Humanoid") end
+local function GetR() local c=Player.Character return c and c:FindFirstChild("HumanoidRootPart") end
+local sg=Instance.new("ScreenGui")
+sg.Name="TotalHub"
+sg.ResetOnSpawn=false
+local ok=pcall(function() sg.Parent=game:GetService("CoreGui") end)
+if not ok then sg.Parent=Player:WaitForChild("PlayerGui") end
+local function mk(cls,props) local o=Instance.new(cls) for k,v in pairs(props)do o[k]=v end return o end
+local function cr(p,r) mk("UICorner",{CornerRadius=UDim.new(0,r or 8),Parent=p}) end
+local function notify(msg)
+	local f=mk("Frame",{Size=UDim2.new(0,300,0,48),Position=UDim2.new(0.5,-150,0,12),BackgroundColor3=Color3.fromRGB(30,30,36),ZIndex=30,Parent=sg})
+	cr(f,10) mk("UIStroke",{Color=Color3.fromRGB(80,200,120),Thickness=1.5,Parent=f})
+	mk("TextLabel",{Size=UDim2.new(1,-16,1,0),Position=UDim2.new(0,8,0,0),BackgroundTransparency=1,Text=msg,TextColor3=Color3.fromRGB(230,230,235),TextSize=13,Font=Enum.Font.GothamBold,ZIndex=31,Parent=f})
+	game:GetService("Debris"):AddItem(f,3)
+end
+local T={
+	Bg=Color3.fromRGB(18,18,22),Side=Color3.fromRGB(22,22,28),
+	Main=Color3.fromRGB(28,28,34),Row=Color3.fromRGB(34,34,42),
+	Text=Color3.fromRGB(230,230,235),Sub=Color3.fromRGB(140,140,155),
+	Acc=Color3.fromRGB(120,80,255),Red=Color3.fromRGB(220,50,50),
+	ON=Color3.fromRGB(80,210,120),OFF=Color3.fromRGB(65,65,78),
+	Sep=Color3.fromRGB(48,48,60),Input=Color3.fromRGB(38,38,48),
+}
+local function connectBtn(btn,cb)
+	local db=false
+	btn.InputEnded:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+			if not db then db=true pcall(cb) task.delay(0.15,function()db=false end) end
+		end
+	end)
+end
+local OpenBtn=mk("TextButton",{Size=UDim2.new(0,52,0,52),Position=UDim2.new(0,14,0.5,-26),BackgroundColor3=T.Acc,Text="☰",TextColor3=Color3.fromRGB(255,255,255),TextSize=24,Font=Enum.Font.GothamBold,ZIndex=10,Parent=sg})
+cr(OpenBtn,12) mk("UIStroke",{Color=T.ON,Thickness=2,Parent=OpenBtn})
+local drag,dInput,dStart,dPos=false
+OpenBtn.InputBegan:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+		drag=true dStart=i.Position dPos=OpenBtn.Position
+		i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then drag=false end end)
+	end
+end)
+OpenBtn.InputChanged:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement then dInput=i end
+end)
+UIS.InputChanged:Connect(function(i)
+	if i==dInput and drag then
+		local d=i.Position-dStart
+		OpenBtn.Position=UDim2.new(dPos.X.Scale,dPos.X.Offset+d.X,dPos.Y.Scale,dPos.Y.Offset+d.Y)
+	end
+end)
+local MF=mk("Frame",{Size=UDim2.new(0,560,0,480),Position=UDim2.new(0.5,-280,0.5,-240),BackgroundColor3=T.Bg,Visible=false,ZIndex=5,Parent=sg})
+cr(MF,14) mk("UIStroke",{Color=T.Acc,Thickness=2,Parent=MF})
+local Hdr=mk("Frame",{Size=UDim2.new(1,0,0,46),BackgroundColor3=T.Side,ZIndex=6,Parent=MF}) cr(Hdr,14)
+local Logo=mk("TextLabel",{Size=UDim2.new(0,36,0,36),Position=UDim2.new(0,6,0.5,-18),BackgroundColor3=T.Acc,Text="T",TextColor3=Color3.fromRGB(255,255,255),TextSize=20,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(Logo,8)
+mk("TextLabel",{Size=UDim2.new(1,-130,1,0),Position=UDim2.new(0,48,0,0),BackgroundTransparency=1,Text="✦ TOTAL HUB v2.0",TextColor3=T.Acc,TextSize=15,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=7,Parent=Hdr})
+local XBtn=mk("TextButton",{Size=UDim2.new(0,30,0,30),Position=UDim2.new(1,-38,0.5,-15),BackgroundColor3=T.Red,Text="✕",TextColor3=Color3.fromRGB(255,255,255),TextSize=14,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(XBtn,6)
+local MinBtn=mk("TextButton",{Size=UDim2.new(0,30,0,30),Position=UDim2.new(1,-72,0.5,-15),BackgroundColor3=T.Row,Text="−",TextColor3=T.Text,TextSize=18,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(MinBtn,6)
+local SideBar=mk("Frame",{Size=UDim2.new(0,160,1,-46),Position=UDim2.new(0,0,0,46),BackgroundColor3=T.Side,ZIndex=6,Parent=MF})
+mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2),Parent=SideBar})
+mk("UIPadding",{PaddingTop=UDim.new(0,8),PaddingBottom=UDim.new(0,8),PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),Parent=SideBar})
+local CF=mk("Frame",{Size=UDim2.new(1,-160,1,-46),Position=UDim2.new(0,160,0,46),BackgroundColor3=T.Main,ZIndex=6,Parent=MF})
+local SF=mk("ScrollingFrame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,ScrollBarThickness=4,ScrollBarImageColor3=T.Acc,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ZIndex=7,Parent=CF})
+mk("UIPadding",{PaddingTop=UDim.new(0,10),PaddingBottom=UDim.new(0,10),PaddingLeft=UDim.new(0,10),PaddingRight=UDim.new(0,10),Parent=SF})
+mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,6),Parent=SF})
+local TabBtns,Pages,ActiveTab,Widgets,TS2={},{},{},{},{}
+local function clearW()for _,v in pairs(Widgets)do v:Destroy()end Widgets={} end
+local function addSep(title)
+	local f=mk("Frame",{Size=UDim2.new(1,0,0,28),BackgroundTransparency=1,ZIndex=8,Parent=SF})
+	mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=title,TextColor3=T.Acc,TextSize=12,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=f})
+	mk("Frame",{Size=UDim2.new(1,0,0,1),Position=UDim2.new(0,0,1,-1),BackgroundColor3=T.Acc,BorderSizePixel=0,ZIndex=9,Parent=f})
+	table.insert(Widgets,f)
+end
+local function addToggle(id,label,desc,cb)
+	if TS2[id]==nil then TS2[id]=false end
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,56),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,-72,0,26),Position=UDim2.new(0,12,0,6),BackgroundTransparency=1,Text=label,TextColor3=T.Text,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,-72,0,20),Position=UDim2.new(0,12,0,30),BackgroundTransparency=1,Text=desc or "",TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	local pill=mk("Frame",{Size=UDim2.new(0,50,0,26),Position=UDim2.new(1,-62,0.5,-13),ZIndex=9,Parent=row}) cr(pill,13)
+	local knob=mk("Frame",{Size=UDim2.new(0,20,0,20),Position=UDim2.new(0,3,0.5,-10),BackgroundColor3=Color3.fromRGB(255,255,255),ZIndex=10,Parent=pill}) cr(knob,10)
+	local function upd()
+		local s=TS2[id]
+		pill.BackgroundColor3=s and T.ON or T.OFF
+		knob.Position=s and UDim2.new(1,-23,0.5,-10) or UDim2.new(0,3,0.5,-10)
+	end
+	upd()
+	local btn=mk("TextButton",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",ZIndex=11,Parent=row})
+	connectBtn(btn,function()
+		TS2[id]=not TS2[id] upd()
+		if cb then pcall(cb,TS2[id]) end
+	end)
+	table.insert(Widgets,row)
+end
+local function addButton(label,desc,cb)
+	local h=desc and 48 or 38
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,h),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Acc,Thickness=1,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,-16,0,24),Position=UDim2.new(0,12,0,desc and 5 or 7),BackgroundTransparency=1,Text=label,TextColor3=T.Text,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	if desc then mk("TextLabel",{Size=UDim2.new(1,-16,0,16),Position=UDim2.new(0,12,0,26),BackgroundTransparency=1,Text=desc,TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row}) end
+	local btn=mk("TextButton",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text="",ZIndex=11,Parent=row})
+	connectBtn(btn,function() if cb then pcall(cb) end end)
+	table.insert(Widgets,row)
+end
+local function addInput(label,placeholder,btnText,cb,resetCb)
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,86),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,0,0,24),Position=UDim2.new(0,12,0,5),BackgroundTransparency=1,Text=label,TextColor3=T.Text,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	local box=mk("TextBox",{Size=UDim2.new(1,-110,0,28),Position=UDim2.new(0,12,0,32),BackgroundColor3=T.Input,PlaceholderText=placeholder or "",Text="",TextColor3=T.Text,PlaceholderColor3=T.Sub,TextSize=13,Font=Enum.Font.Gotham,ClearTextOnFocus=false,ZIndex=9,Parent=row}) cr(box,6)
+	mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),Parent=box})
+	local setBtn=mk("TextButton",{Size=UDim2.new(0,42,0,28),Position=UDim2.new(1,-98,0,32),BackgroundColor3=T.Acc,Text=btnText or "Set",TextColor3=Color3.fromRGB(255,255,255),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=9,Parent=row}) cr(setBtn,6)
+	local rstBtn=mk("TextButton",{Size=UDim2.new(0,42,0,28),Position=UDim2.new(1,-52,0,32),BackgroundColor3=T.Row,Text="Reset",TextColor3=T.Sub,TextSize=11,Font=Enum.Font.GothamBold,ZIndex=9,Parent=row}) cr(rstBtn,6)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=rstBtn})
+	connectBtn(setBtn,function() if cb then pcall(cb,box.Text) end end)
+	connectBtn(rstBtn,function() if resetCb then pcall(resetCb) end box.Text="" end)
+	table.insert(Widgets,row)
+end
+local function addSlider(label,min,max,def,cb)
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,64),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=row})
+	local valLbl=mk("TextLabel",{Size=UDim2.new(1,-16,0,22),Position=UDim2.new(0,12,0,5),BackgroundTransparency=1,Text=label.." : "..def,TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	local track=mk("Frame",{Size=UDim2.new(1,-24,0,6),Position=UDim2.new(0,12,0,36),BackgroundColor3=T.Sep,ZIndex=9,Parent=row}) cr(track,3)
+	local fill=mk("Frame",{Size=UDim2.new((def-min)/(max-min),0,1,0),BackgroundColor3=T.Acc,ZIndex=10,Parent=track}) cr(fill,3)
+	local knob=mk("Frame",{Size=UDim2.new(0,18,0,18),Position=UDim2.new((def-min)/(max-min),-9,0.5,-9),BackgroundColor3=Color3.fromRGB(255,255,255),ZIndex=11,Parent=track}) cr(knob,9)
+	local sliding=false
+	local function setVal(x)
+		local abs=track.AbsolutePosition.X
+		local w=track.AbsoluteSize.X
+		local pct=math.clamp((x-abs)/w,0,1)
+		local val=math.floor(min+(max-min)*pct)
+		fill.Size=UDim2.new(pct,0,1,0)
+		knob.Position=UDim2.new(pct,-9,0.5,-9)
+		valLbl.Text=label.." : "..val
+		if cb then pcall(cb,val) end
+	end
+	track.InputBegan:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+			sliding=true setVal(i.Position.X)
+		end
+	end)
+	UIS.InputChanged:Connect(function(i)
+		if sliding and(i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement)then
+			setVal(i.Position.X)
+		end
+	end)
+	UIS.InputEnded:Connect(function(i)
+		if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then sliding=false end
+	end)
+	table.insert(Widgets,row)
+end
+local function addTPSave()
+	local header=mk("Frame",{Size=UDim2.new(1,0,0,36),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(header,8)
+	mk("UIStroke",{Color=T.Acc,Thickness=1,Parent=header})
+	mk("TextLabel",{Size=UDim2.new(1,-90,1,0),Position=UDim2.new(0,12,0,0),BackgroundTransparency=1,Text="💾 Lưu vị trí (max 20)",TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=header})
+	local saveBtn=mk("TextButton",{Size=UDim2.new(0,70,0,26),Position=UDim2.new(1,-78,0.5,-13),BackgroundColor3=T.Acc,Text="+ Lưu",TextColor3=Color3.fromRGB(255,255,255),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=9,Parent=header}) cr(saveBtn,6)
+	table.insert(Widgets,header)
+	local listFrame=mk("Frame",{Size=UDim2.new(1,0,0,0),AutomaticSize=Enum.AutomaticSize.Y,BackgroundTransparency=1,ZIndex=8,Parent=SF})
+	mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,4),Parent=listFrame})
+	table.insert(Widgets,listFrame)
+	local function refreshList()
+		for _,v in pairs(listFrame:GetChildren())do if not v:IsA("UIListLayout")then v:Destroy()end end
+		for i,pos in ipairs(Positions)do
+			local r=mk("Frame",{Size=UDim2.new(1,0,0,34),BackgroundColor3=T.Row,LayoutOrder=i,ZIndex=9,Parent=listFrame}) cr(r,6)
+			mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=r})
+			mk("TextLabel",{Size=UDim2.new(1,-70,1,0),Position=UDim2.new(0,10,0,0),BackgroundTransparency=1,Text="📍 #"..i.." ("..math.floor(pos.X)..","..math.floor(pos.Y)..","..math.floor(pos.Z)..")",TextColor3=T.Text,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=10,Parent=r})
+			local tpb=mk("TextButton",{Size=UDim2.new(0,50,0,24),Position=UDim2.new(1,-58,0.5,-12),BackgroundColor3=T.Acc,Text="TP",TextColor3=Color3.fromRGB(255,255,255),TextSize=11,Font=Enum.Font.GothamBold,ZIndex=10,Parent=r}) cr(tpb,6)
+			local pp=pos
+			connectBtn(tpb,function() local r2=GetR() if r2 then r2.CFrame=CFrame.new(pp) end end)
+		end
+	end
+	connectBtn(saveBtn,function()
+		if #Positions>=20 then notify("⚠ Đã đầy 20!") return end
+		local r=GetR() if r then table.insert(Positions,r.Position) refreshList() notify("✅ Lưu #"..#Positions) end
+	end)
+end
+local function renderTab(name) clearW() local fn=Pages[name] if fn then fn() end end
+local function addTab(name,icon,fn)
+	Pages[name]=fn
+	local btn=mk("TextButton",{Size=UDim2.new(1,0,0,42),BackgroundTransparency=1,Text="",ZIndex=7,Parent=SideBar})
+	local accent=mk("Frame",{Size=UDim2.new(0,4,0.7,0),Position=UDim2.new(0,-2,0.15,0),BackgroundColor3=T.Acc,Visible=false,ZIndex=8,Parent=btn}) cr(accent,2)
+	mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=icon.." "..name,TextColor3=T.Sub,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=8,Parent=btn})
+	mk("UIPadding",{PaddingLeft=UDim.new(0,12),Parent=btn})
+	TabBtns[name]={btn=btn,accent=accent}
+	connectBtn(btn,function()
+		for n,tb in pairs(TabBtns)do
+			tb.accent.Visible=false
+			tb.btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Sub
+		end
+		accent.Visible=true
+		btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Text
+		ActiveTab=name renderTab(name)
+	end)
+end
+local menuOpen=false
+local minimized=false
+local function toggleMenu()
+	menuOpen=not menuOpen
+	MF.Visible=menuOpen
+	if menuOpen and ActiveTab~="" then renderTab(ActiveTab) end
+end
+connectBtn(XBtn,toggleMenu) connectBtn(OpenBtn,toggleMenu)
+connectBtn(MinBtn,function()
+	minimized=not minimized
+	SideBar.Visible=not minimized
+	CF.Visible=not minimized
+	MF.Size=minimized and UDim2.new(0,560,0,46) or UDim2.new(0,560,0,480)
+end)
+local Conn2={}
+local function addConn(tag,c) if Conn2[tag] then Conn2[tag]:Disconnect() end Conn2[tag]=c end
+local checkpoint=nil
+
+addTab("Movement","🏃",function()
+	addSep("Tốc Độ & Nhảy")
+	addInput("WalkSpeed","Nhập số (16+)","Set",function(v) local n=tonumber(v) if n then SpeedVal=n end end,function() SpeedVal=16 notify("🔄 Reset speed") end)
+	addButton("Apply Speed",nil,function() local h=GetH() if h then h.WalkSpeed=SpeedVal notify("✅ Speed: "..SpeedVal) end end)
+	addInput("JumpPower","Nhập số (50+)","Set",function(v) local n=tonumber(v) if n then JumpVal=n end end,function() JumpVal=50 notify("🔄 Reset jump") end)
+	addButton("Apply Jump",nil,function() local h=GetH() if h then h.JumpPower=JumpVal notify("✅ Jump: "..JumpVal) end end)
+	addSep("Chức Năng")
+	addToggle("infj","Infinite Jump","Nhảy vô hạn",function(s)
+		if s then addConn("infj",UIS.JumpRequest:Connect(function() local h=GetH() if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end end))
+		else if Conn2.infj then Conn2.infj:Disconnect() end end
+	end)
+	addToggle("fly","Fly","Bay tự do WASD+Space/Shift",function(s)
+		if s then
+			local bg=Instance.new("BodyGyro",GetR()) bg.MaxTorque=Vector3.new(9e9,9e9,9e9) bg.D=100 bg.Name="FlyG"
+			local bv=Instance.new("BodyVelocity",GetR()) bv.MaxForce=Vector3.new(9e9,9e9,9e9) bv.Name="FlyV"
+			addConn("fly",RS.Heartbeat:Connect(function()
+				local r=GetR() if not r then return end
+				local bg2=r:FindFirstChild("FlyG") local bv2=r:FindFirstChild("FlyV")
+				if not bg2 or not bv2 then return end
+				bg2.CFrame=workspace.CurrentCamera.CFrame
+				local d=Vector3.new()
+				if UIS:IsKeyDown(Enum.KeyCode.W) then d=d+workspace.CurrentCamera.CFrame.LookVector end
+				if UIS:IsKeyDown(Enum.KeyCode.S) then d=d-workspace.CurrentCamera.CFrame.LookVector end
+				if UIS:IsKeyDown(Enum.KeyCode.A) then d=d-workspace.CurrentCamera.CFrame.RightVector end
+				if UIS:IsKeyDown(Enum.KeyCode.D) then d=d+workspace.CurrentCamera.CFrame.RightVector end
+				if UIS:IsKeyDown(Enum.KeyCode.Space) then d=d+Vector3.new(0,1,0) end
+				if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then d=d-Vector3.new(0,1,0) end
+				bv2.Velocity=d*60
+			end))
+		else
+			if Conn2.fly then Conn2.fly:Disconnect() end
+			local r=GetR() if r then
+				if r:FindFirstChild("FlyG") then r.FlyG:Destroy() end
+				if r:FindFirstChild("FlyV") then r.FlyV:Destroy() end
+			end
+		end
+	end)
+	addToggle("wallhop","Wallhop","Dựa tường nhảy lên cao",function(s)
+		if s then addConn("wallhop",UIS.JumpRequest:Connect(function()
+			local r=GetR() local h=GetH() if not r or not h then return end
+			local dirs={Vector3.new(1,0,0),Vector3.new(-1,0,0),Vector3.new(0,0,1),Vector3.new(0,0,-1)}
+			local params=RaycastParams.new() params.FilterDescendantsInstances={Player.Character} params.FilterType=Enum.RaycastFilterType.Exclude
+			for _,dir in dirs do
+				local result=workspace:Raycast(r.Position,dir*3,params)
+				if result then
+					local opposite=CFrame.new(r.Position,r.Position-dir)
+					r.CFrame=opposite
+					h:ChangeState(Enum.HumanoidStateType.Jumping)
+					task.delay(0.1,function() if GetR() then GetR().CFrame=opposite*CFrame.Angles(0,math.pi,0) end end)
+					break
+				end
+			end
+		end))
+		else if Conn2.wallhop then Conn2.wallhop:Disconnect() end end
+	end)
+	addToggle("nc","Noclip","Xuyên tường",function(s)
+		if s then addConn("nc",RS.Stepped:Connect(function() local c=Player.Character if c then for _,p in c:GetDescendants()do if p:IsA("BasePart")then p.CanCollide=false end end end end))
+		else if Conn2.nc then Conn2.nc:Disconnect() end if Player.Character then for _,p in Player.Character:GetDescendants()do if p:IsA("BasePart")then p.CanCollide=true end end end end
+	end)
+	addToggle("af","Anti Fall","Chống chết vì ngã",function(s)
+		if s then addConn("af",RS.Heartbeat:Connect(function() local h=GetH() if h and h.FloorMaterial==Enum.Material.Air then h:ChangeState(Enum.HumanoidStateType.Jumping) end end))
+		else if Conn2.af then Conn2.af:Disconnect() end end
+	end)
+	addToggle("av","Anti Void","Chống rơi xuống void",function(s)
+		if s then addConn("av",RS.Heartbeat:Connect(function() local r=GetR() if r and r.Position.Y<-80 then r.CFrame=CFrame.new(r.Position.X,50,r.Position.Z) end end))
+		else if Conn2.av then Conn2.av:Disconnect() end end
+	end)
+	addToggle("lg","Low Gravity","Trọng lực thấp",function(s) workspace.Gravity=s and 30 or 196.2 end)
+	addToggle("fw","Fling Walk","Văng về phía trước",function(s)
+		if s then addConn("fw",RS.Heartbeat:Connect(function()
+			local r=GetR() if not r then return end
+			local bv=Instance.new("BodyVelocity",r) bv.Velocity=r.CFrame.LookVector*200 bv.MaxForce=Vector3.new(9e9,0,9e9)
+			game:GetService("Debris"):AddItem(bv,0.05)
+		end))
+		else if Conn2.fw then Conn2.fw:Disconnect() end end
+	end)
+	addToggle("bh","Bunny Hop","Tự nhảy liên tục",function(s)
+		if s then addConn("bh",RS.Heartbeat:Connect(function() local h=GetH() if h and h.FloorMaterial~=Enum.Material.Air then h:ChangeState(Enum.HumanoidStateType.Jumping) end end))
+		else if Conn2.bh then Conn2.bh:Disconnect() end end
+	end)
+	addButton("Reset Character",nil,function() local h=GetH() if h then h.Health=0 end end)
+end)
+
+addTab("Teleport","🌀",function()
+	addSep("Nhanh")
+	addButton("TP to Spawn",nil,function()
+		local r=GetR() if not r then return end
+		local sp=workspace:FindFirstChildOfClass("SpawnLocation")
+		if sp then r.CFrame=sp.CFrame+Vector3.new(0,5,0) notify("✅ TP Spawn!") end
+	end)
+	addButton("TP Map Center",nil,function() local r=GetR() if r then r.CFrame=CFrame.new(0,50,0) notify("✅ TP Center!") end end)
+	addButton("TP Random Player",nil,function()
+		local list={} for _,p in Players:GetPlayers()do if p~=Player and p.Character and p.Character:FindFirstChild("HumanoidRootPart")then table.insert(list,p)end end
+		if #list>0 then
+			local p=list[math.random(1,#list)]
+			local r=GetR() if r then r.CFrame=p.Character.HumanoidRootPart.CFrame*CFrame.new(0,0,3) notify("✅ TP tới "..p.Name) end
+		else notify("❌ Không có ai!") end
+	end)
+	addSep("TP theo tên")
+	addInput("TP tới Player","Nhập tên (1 chữ cũng được)","TP",function(v)
+		local found={} for _,p in Players:GetPlayers()do if p~=Player and p.Name:lower():find(v:lower(),1,true)then table.insert(found,p)end end
+		if #found==0 then notify("❌ Không tìm thấy: "..v)
+		elseif #found>1 then
+			local names="" for _,p in found do names=names..p.Name.." " end
+			notify("⚠ Trùng: "..names.."→ ghi thêm!")
+		else
+			local p=found[1] local r=GetR()
+			if r and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				r.CFrame=p.Character.HumanoidRootPart.CFrame*CFrame.new(0,0,3) notify("✅ TP tới "..p.Name)
+			end
+		end
+	end,nil)
+	addInput("TP tới ProximityPrompt","Nhập tên prompt","TP",function(v)
+		local found={} for _,obj in workspace:GetDescendants()do if obj:IsA("ProximityPrompt") then local txt=(obj.ActionText..obj.ObjectText):lower() if txt:find(v:lower(),1,true)then table.insert(found,obj)end end end
+		if #found==0 then notify("❌ Không tìm thấy prompt: "..v)
+		elseif #found>1 then notify("⚠ Trùng "..#found.." prompt → ghi thêm!")
+		else local r=GetR() if r then r.CFrame=found[1].Parent:IsA("BasePart") and CFrame.new(found[1].Parent.Position+Vector3.new(0,3,0)) or CFrame.new(found[1].Parent.Parent.PrimaryPart and found[1].Parent.Parent.PrimaryPart.Position+Vector3.new(0,3,0) or Vector3.new(0,50,0)) notify("✅ TP tới prompt!") end end
+	end,nil)
+	addSep("TP Server")
+	addInput("TP tới Server ID","Dán Server ID","TP",function(v) if v~="" then pcall(function() TS:TeleportToPlaceInstance(game.PlaceId,v,Player) end) end end,nil)
+	addSep("Lưu Vị Trí")
+	addTPSave()
+end)
+
+addTab("Combat","⚔️",function()
+	addSep("Aim & Aura")
+	addToggle("aim","Aim Đầu","Auto aim vào head người gần nhất",function(s)
+		if s then addConn("aim",RS.RenderStepped:Connect(function()
+			local best,bd=nil,200
+			for _,p in Players:GetPlayers()do
+				if p~=Player and p.Character and p.Character:FindFirstChild("Head") then
+					local pos,onScreen=workspace.CurrentCamera:WorldToScreenPoint(p.Character.Head.Position)
+					local cx,cy=workspace.CurrentCamera.ViewportSize.X/2,workspace.CurrentCamera.ViewportSize.Y/2
+					local dist=math.sqrt((pos.X-cx)^2+(pos.Y-cy)^2)
+					if dist<bd and onScreen then bd=dist best=p end
+				end
+			end
+			if best and best.Character and best.Character:FindFirstChild("Head") then
+				workspace.CurrentCamera.CFrame=CFrame.new(workspace.CurrentCamera.CFrame.Position,best.Character.Head.Position)
+			end
+		end))
+		else if Conn2.aim then Conn2.aim:Disconnect() end end
+	end)
+	addToggle("ka","Kill Aura","Damage người trong bán kính 15",function(s)
+		if s then addConn("ka",RS.Heartbeat:Connect(function()
+			for _,p in Players:GetPlayers()do
+				if p~=Player and p.Character and p.Character:FindFirstChild("Humanoid") and p.Character:FindFirstChild("HumanoidRootPart") then
+					local r=GetR() if not r then return end
+					if(r.Position-p.Character.HumanoidRootPart.Position).Magnitude<15 then
+						p.Character.Humanoid:TakeDamage(5)
+					end
+				end
+			end
+		end))
+		else if Conn2.ka then Conn2.ka:Disconnect() end end
+	end)
+	addSep("Fling & Bring")
+	addInput("Fling Player","Nhập tên player","Fling",function(v)
+		local found={} for _,p in Players:GetPlayers()do if p~=Player and p.Name:lower():find(v:lower(),1,true)then table.insert(found,p)end end
+		if #found==0 then notify("❌ Không tìm thấy")
+		elseif #found>1 then notify("⚠ Trùng tên → ghi thêm!")
+		else
+			local p=found[1] local r=GetR()
+			if r and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				r.CFrame=p.Character.HumanoidRootPart.CFrame
+				local bv=Instance.new("BodyVelocity",p.Character.HumanoidRootPart)
+				bv.Velocity=Vector3.new(math.random(-100,100),200,math.random(-100,100))
+				bv.MaxForce=Vector3.new(9e9,9e9,9e9)
+				game:GetService("Debris"):AddItem(bv,0.2)
+				notify("✅ Fling "..p.Name)
+			end
+		end
+	end,nil)
+	addInput("Bring Player","Nhập tên player","Bring",function(v)
+		local found={} for _,p in Players:GetPlayers()do if p~=Player and p.Name:lower():find(v:lower(),1,true)then table.insert(found,p)end end
+		if #found==0 then notify("❌ Không tìm thấy")
+		elseif #found>1 then notify("⚠ Trùng tên → ghi thêm!")
+		else
+			local p=found[1] local r=GetR()
+			if r and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+				p.Character.HumanoidRootPart.CFrame=r.CFrame*CFrame.new(0,0,3)
+				notify("✅ Brought "..p.Name)
+			end
+		end
+	end,nil)
+end)
+
+addTab("Visual","👁️",function()
+	addSep("Lighting")
+	addToggle("fb","Fullbright","Sáng toàn bộ map",function(s)
+		Lighting.Brightness=s and 10 or 1 Lighting.GlobalShadows=not s Lighting.FogEnd=s and 9e9 or 1e4
+	end)
+	addToggle("nf","No Fog","Xóa sương mù",function(s) Lighting.FogEnd=s and 9e9 or 1e4 end)
+	addToggle("nd","Night Mode","Chuyển sang ban đêm",function(s) Lighting.ClockTime=s and 0 or 14 end)
+	addSep("ESP")
+	addToggle("esp","ESP Players","Hiện tên + máu người chơi",function(s)
+		if s then
+			addConn("esp",RS.Heartbeat:Connect(function()
+				for _,p in Players:GetPlayers()do
+					if p~=Player and p.Character and p.Character:FindFirstChild("Head") then
+						local head=p.Character.Head
+						if not head:FindFirstChild("ESPBill") then
+							local bb=Instance.new("BillboardGui",head) bb.Name="ESPBill"
+							bb.Size=UDim2.new(0,110,0,44) bb.StudsOffset=Vector3.new(0,2.5,0) bb.AlwaysOnTop=true
+							mk("TextLabel",{Size=UDim2.new(1,0,0.5,0),BackgroundTransparency=1,Text=p.Name,TextColor3=Color3.fromRGB(255,80,80),TextSize=13,Font=Enum.Font.GothamBold,Parent=bb})
+							local hl=mk("TextLabel",{Size=UDim2.new(1,0,0.5,0),Position=UDim2.new(0,0,0.5,0),BackgroundTransparency=1,Text="❤ 100",TextColor3=Color3.fromRGB(80,220,120),TextSize=12,Font=Enum.Font.Gotham,Parent=bb})
+							addConn("esp_"..p.Name,RS.Heartbeat:Connect(function()
+								local h=p.Character and p.Character:FindFirstChildOfClass("Humanoid")
+								if h then hl.Text="❤ "..math.floor(h.Health).."/"..math.floor(h.MaxHealth) end
+							end))
+						end
+					end
+				end
+			end))
+		else
+			if Conn2.esp then Conn2.esp:Disconnect() end
+			for _,p in Players:GetPlayers()do if p.Character then local head=p.Character:FindFirstChild("Head") if head and head:FindFirstChild("ESPBill") then head.ESPBill:Destroy() end end end
+		end
+	end)
+	addToggle("xray","Xray","Tường trong suốt",function(s)
+		for _,p in workspace:GetDescendants()do
+			if p:IsA("BasePart") and not(Player.Character and Player.Character:FindFirstChild(p.Name))then
+				p.LocalTransparencyModifier=s and 0.7 or 0
+			end
+		end
+	end)
+	addToggle("hl","Highlight Players","Tô màu người chơi",function(s)
+		for _,p in Players:GetPlayers()do
+			if p~=Player and p.Character then
+				if s then
+					if not p.Character:FindFirstChild("HLEffect") then
+						local h=Instance.new("SelectionBox",p.Character) h.Name="HLEffect"
+						h.Adornee=p.Character h.Color3=Color3.fromRGB(255,0,0) h.LineThickness=0.05
+					end
+				else
+					local h=p.Character:FindFirstChild("HLEffect") if h then h:Destroy() end
+				end
+			end
+		end
+	end)
+	addSep("Performance")
+	addButton("FPS Boost","Giảm quality tăng FPS",function()
+		settings().Rendering.QualityLevel=1
+		Lighting.GlobalShadows=false
+		for _,v in workspace:GetDescendants()do
+			if v:IsA("ParticleEmitter") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then v.Enabled=false end
+		end
+		notify("✅ FPS Boost!")
+	end)
+	addButton("Remove Decals","Xóa decal trong map",function()
+		for _,v in workspace:GetDescendants()do if v:IsA("Decal") or v:IsA("Texture") then v:Destroy() end end
+		notify("✅ Removed decals!")
+	end)
+end)
+
+addTab("Player","👤",function()
+	addSep("Health")
+	addToggle("god","God Mode","Máu luôn đầy",function(s)
+		if s then addConn("god",RS.Heartbeat:Connect(function()
+			local h=GetH() if h then h.MaxHealth=math.huge h.Health=math.huge end
+		end))
+		else if Conn2.god then Conn2.god:Disconnect() end local h=GetH() if h then h.MaxHealth=100 h.Health=100 end end
+	end)
+	addSlider("Max Health",100,100000,100,function(v)
+		local h=GetH() if h then h.MaxHealth=v h.Health=v end
+	end)
+	addToggle("ar","Auto Respawn","Tự hồi sinh khi chết",function(s)
+		if s then addConn("ar",RS.Heartbeat:Connect(function()
+			local h=GetH() if h and h.Health<=0 then task.delay(0.5,function() Player:LoadCharacter() end) end
+		end))
+		else if Conn2.ar then Conn2.ar:Disconnect() end end
+	end)
+	addToggle("ckpt","Checkpoint","Chết sẽ TP về checkpoint",function(s)
+		if s then
+			checkpoint=GetR() and GetR().Position
+			notify("📍 Checkpoint lưu!")
+			addConn("ckpt",Player.CharacterAdded:Connect(function()
+				task.wait(2) local r=GetR()
+				if checkpoint and r then r.CFrame=CFrame.new(checkpoint) end
+			end))
+		else if Conn2.ckpt then Conn2.ckpt:Disconnect() end checkpoint=nil end
+	end)
+	addToggle("ak","Anti Kick","Giữ máu không về 0",function(s)
+		if s then addConn("ak",RS.Heartbeat:Connect(function() local h=GetH() if h and h.Health<=0 then h.Health=h.MaxHealth end end))
+		else if Conn2.ak then Conn2.ak:Disconnect() end end
+	end)
+	addSep("Body")
+	addSlider("Character Scale",1,10,1,function(v)
+		local h=GetH() if h then for _,n in{"BodyDepthScale","BodyHeightScale","BodyWidthScale","HeadScale"}do local s=h:FindFirstChild(n) if s then s.Value=v end end end
+	end)
+	addButton("Remove Accessories",nil,function()
+		local c=Player.Character if c then for _,v in c:GetChildren()do if v:IsA("Accessory") then v:Destroy() end end end
+		notify("✅ Removed accessories!")
+	end)
+	addButton("Spin Self",nil,function()
+		local r=GetR() if not r then return end
+		addConn("spin",RS.Heartbeat:Connect(function()
+			local r2=GetR() if r2 then r2.CFrame=r2.CFrame*CFrame.Angles(0,0.1,0) end
+		end))
+		task.delay(3,function() if Conn2.spin then Conn2.spin:Disconnect() end end)
+	end)
+end)
+
+addTab("Server","🌐",function()
+	addSep("Server Tools")
+	addButton("Hop Server","Chuyển server ngẫu nhiên",function()
+		local ok2,result=pcall(function() return Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/"..game.PlaceId.."/servers/Public?sortOrder=Asc&limit=100")) end)
+		if ok2 and result and result.data then
+			for _,v in result.data do if v.playing<v.maxPlayers and v.id~=game.JobId then TS:TeleportToPlaceInstance(game.PlaceId,v.id) break end end
+		else notify("❌ Lỗi lấy server!") end
+	end)
+	addButton("Rejoin","Vào lại game",function() TS:Teleport(game.PlaceId,Player) end)
+	addButton("Copy Server ID",nil,function() setclipboard(game.JobId) notify("✅ Copied: "..game.JobId) end)
+	addButton("Copy Remove Event",nil,function()
+		setclipboard([[for _,v in pairs(game:GetDescendants())do if v:IsA("RemoteEvent") or v:IsA("RemoteFunction") then v:Destroy() end end]])
+		notify("✅ Copied remove event!")
+	end)
+	addSep("Anti")
+	addToggle("afk","Anti AFK","Chống kick AFK",function(s)
+		if s then addConn("afk",RS.Heartbeat:Connect(function() VirtualUser:CaptureController() VirtualUser:ClickButton2(Vector2.new()) end))
+		else if Conn2.afk then Conn2.afk:Disconnect() end end
+	end)
+	addSep("Follow")
+	addInput("Follow Player","Nhập tên","Follow",function(v)
+		local found={} for _,p in Players:GetPlayers()do if p~=Player and p.Name:lower():find(v:lower(),1,true)then table.insert(found,p)end end
+		if #found==0 then notify("❌ Không tìm thấy")
+		elseif #found>1 then notify("⚠ Trùng → ghi thêm!")
+		else
+			local p=found[1]
+			addConn("follow",RS.Heartbeat:Connect(function()
+				local r=GetR() if r and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+					r.CFrame=p.Character.HumanoidRootPart.CFrame*CFrame.new(0,0,4)
+				end
+			end))
+			notify("✅ Following "..p.Name)
+		end
+	end,function() if Conn2.follow then Conn2.follow:Disconnect() end notify("⛔ Stop follow") end)
+end)
+
+addTab("Loader","📦",function()
+	addSep("Scripts")
+	addButton("Load Infinite Yield","Gõ ; để dùng lệnh",function() loadstring(game:HttpGet("https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source"))() notify("✅ IY Loaded!") end)
+	addButton("Load Dex Explorer","Explorer tool",function() loadstring(game:HttpGet("https://raw.githubusercontent.com/peyton2465/Dex/master/out.lua"))() notify("✅ Dex Loaded!") end)
+	addButton("Load F3X","Client build tool",function() loadstring(game:HttpGet("https://raw.githubusercontent.com/bqmb3/f3x-wrapper/main/loader.lua"))() notify("✅ F3X Loaded!") end)
+	addButton("Load Fly V3","Menu fly riêng",function() loadstring(game:HttpGet("https://raw.githubusercontent.com/XNEOFF/FlyGuiV3/main/FlyGuiV3.txt"))() notify("✅ Fly V3 Loaded!") end)
+	addButton("Load Hydroxide","Remote spy tool",function() loadstring(game:HttpGet("https://raw.githubusercontent.com/Upbolt/Hydroxide/revision/src/init.lua"))() notify("✅ Hydroxide Loaded!") end)
+	addSep("FE Animations")
+	addButton("Give Jerk Tool","Equip để jerk FE visible",function()
+		if Player.Backpack:FindFirstChild("Jerk") then notify("⚠ Đã có rồi!") return end
+		local t=Instance.new("Tool") t.Name="Jerk" t.RequiresHandle=false t.Parent=Player.Backpack
+		local a=Instance.new("Animation") a.AnimationId="rbxassetid://5915693856"
+		t.Equipped:Connect(function() local h=GetH() if h then local tr=h:LoadAnimation(a) tr:Play() tr.Looped=true tr:AdjustSpeed(2) end end)
+		t.Unequipped:Connect(function() local h=GetH() if h then for _,tr in h:GetPlayingAnimationTracks()do tr:Stop() end end end)
+		notify("✅ Jerk Tool vào Backpack!")
+	end)
+	addButton("Give Sit Tool","Equip để ngồi FE visible",function()
+		if Player.Backpack:FindFirstChild("SitTool") then notify("⚠ Đã có rồi!") return end
+		local t=Instance.new("Tool") t.Name="SitTool" t.RequiresHandle=false t.Parent=Player.Backpack
+		local a=Instance.new("Animation") a.AnimationId="rbxassetid://2506281703"
+		t.Equipped:Connect(function() local h=GetH() if h then local tr=h:LoadAnimation(a) tr:Play() tr.Looped=true end end)
+		t.Unequipped:Connect(function() local h=GetH() if h then for _,tr in h:GetPlayingAnimationTracks()do tr:Stop() end end end)
+		notify("✅ Sit Tool vào Backpack!")
+	end)
+	addButton("Give TP Tool","Tap để teleport",function()
+		if Player.Backpack:FindFirstChild("TPTool") then notify("⚠ Đã có rồi!") return end
+		local t=Instance.new("Tool") t.Name="TPTool" t.RequiresHandle=false t.Parent=Player.Backpack
+		local s=Instance.new("LocalScript",t)
+		s.Source=[[local tool=script.Parent local lp=game:GetService("Players").LocalPlayer
+tool.Activated:Connect(function()
+	local root=lp.Character and lp.Character:FindFirstChild("HumanoidRootPart")
+	local target=lp:GetMouse().Hit
+	if root and target then root.CFrame=target*CFrame.new(0,3,0) end
+end)]]
+		notify("✅ TP Tool vào Backpack!")
+	end)
+addSep("Free Cam")
+	addToggle("fc","Free Cam","Đóng băng nhân vật, cam bay tự do",function(s)
+		if s then
+			local r=GetR() local h=GetH()
+			if not r or not h then return end
+			h.WalkSpeed=0 h.JumpPower=0
+			local cam=workspace.CurrentCamera
+			cam.CameraType=Enum.CameraType.Scriptable
+			addConn("fc",RS.RenderStepped:Connect(function()
+				local d=Vector3.new()
+				if UIS:IsKeyDown(Enum.KeyCode.W) then d=d+cam.CFrame.LookVector end
+				if UIS:IsKeyDown(Enum.KeyCode.S) then d=d-cam.CFrame.LookVector end
+				if UIS:IsKeyDown(Enum.KeyCode.A) then d=d-cam.CFrame.RightVector end
+				if UIS:IsKeyDown(Enum.KeyCode.D) then d=d+cam.CFrame.RightVector end
+				if UIS:IsKeyDown(Enum.KeyCode.Space) then d=d+Vector3.new(0,1,0) end
+				if UIS:IsKeyDown(Enum.KeyCode.LeftShift) then d=d-Vector3.new(0,1,0) end
+				cam.CFrame=cam.CFrame+d*0.5
+			end))
+		else
+			if Conn2.fc then Conn2.fc:Disconnect() end
+			workspace.CurrentCamera.CameraType=Enum.CameraType.Custom
+			local h=GetH() if h then h.WalkSpeed=16 h.JumpPower=50 end
+		end
+	end)
+	addButton("Load Shiftlock",nil,function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/richie0866/remote-spy/master/dist/RemoteSpy.lua"))()
+		notify("✅ Shiftlock Loaded!")
+	end)
+end)
+local function clickFirst()
+	local name=nil for n,_ in pairs(Pages)do name=n break end
+	if name then
+		local tb=TabBtns[name]
+		if tb then tb.accent.Visible=true tb.btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Text ActiveTab=name renderTab(name) end
+	end
+end
+clickFirst()
+notify("✅ Total Hub v2.0 Loaded!")
+print("THIÊN ANH ĐẸP TRAI LẮM")
