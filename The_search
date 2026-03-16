@@ -1,0 +1,153 @@
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+local RS=game:GetService("RunService")
+local Http=game:GetService("HttpService")
+local Player=Players.LocalPlayer
+local sg=Instance.new("ScreenGui")
+sg.Name="ScriptSearch" sg.ResetOnSpawn=false
+local ok=pcall(function() sg.Parent=game:GetService("CoreGui") end)
+if not ok then sg.Parent=Player:WaitForChild("PlayerGui") end
+local function mk(cls,props) local o=Instance.new(cls) for k,v in pairs(props)do o[k]=v end return o end
+local function cr(p,r) mk("UICorner",{CornerRadius=UDim.new(0,r or 8),Parent=p}) end
+local T={
+	Bg=Color3.fromRGB(15,15,40),Panel=Color3.fromRGB(240,240,255),
+	Row=Color3.fromRGB(225,225,245),Text=Color3.fromRGB(15,15,40),
+	Sub=Color3.fromRGB(80,80,120),Acc=Color3.fromRGB(100,60,255),
+	Btn=Color3.fromRGB(15,15,40),BtnText=Color3.fromRGB(240,240,255),
+	Input=Color3.fromRGB(200,200,230),Green=Color3.fromRGB(40,180,80),
+}
+local function notify(msg)
+	local f=mk("Frame",{Size=UDim2.new(0,280,0,44),Position=UDim2.new(0.5,-140,0,8),BackgroundColor3=T.Bg,ZIndex=30,Parent=sg})
+	cr(f,8) mk("UIStroke",{Color=T.Acc,Thickness=1.5,Parent=f})
+	mk("TextLabel",{Size=UDim2.new(1,-12,1,0),Position=UDim2.new(0,6,0,0),BackgroundTransparency=1,Text=msg,TextColor3=T.Panel,TextSize=12,Font=Enum.Font.GothamBold,ZIndex=31,Parent=f})
+	game:GetService("Debris"):AddItem(f,3)
+end
+local function connectBtn(btn,cb)
+	local db=false
+	local function fire() if not db then db=true pcall(cb) task.delay(0.15,function()db=false end) end end
+	btn.MouseButton1Click:Connect(fire)
+	btn.TouchTap:Connect(fire)
+end
+local OpenBtn=mk("TextButton",{Size=UDim2.new(0,48,0,48),Position=UDim2.new(0,14,0.5,-24),BackgroundColor3=T.Btn,Text="✕",TextColor3=T.BtnText,TextSize=20,Font=Enum.Font.GothamBold,ZIndex=10,Parent=sg})
+cr(OpenBtn,10)
+RS.Heartbeat:Connect(function()
+	local stroke=OpenBtn:FindFirstChildOfClass("UIStroke")
+	if not stroke then stroke=mk("UIStroke",{Thickness=2.5,Parent=OpenBtn}) end
+	stroke.Color=Color3.fromHSV(tick()%5/5,1,1)
+end)
+local drag,dInput,dStart,dPos=false
+OpenBtn.InputBegan:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+		drag=true dStart=i.Position dPos=OpenBtn.Position
+		i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then drag=false end end)
+	end
+end)
+OpenBtn.InputChanged:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement then dInput=i end
+end)
+UIS.InputChanged:Connect(function(i)
+	if i==dInput and drag then
+		local d=i.Position-dStart
+		OpenBtn.Position=UDim2.new(dPos.X.Scale,dPos.X.Offset+d.X,dPos.Y.Scale,dPos.Y.Offset+d.Y)
+	end
+end)
+local MF=mk("Frame",{Size=UDim2.new(0,400,0,520),Position=UDim2.new(0.5,-200,0.5,-260),BackgroundColor3=T.Panel,Visible=false,ZIndex=5,Parent=sg})
+cr(MF,14)
+local rainbowStroke=mk("UIStroke",{Thickness=2.5,Parent=MF})
+RS.Heartbeat:Connect(function() rainbowStroke.Color=Color3.fromHSV(tick()%5/5,1,1) end)
+local Hdr=mk("Frame",{Size=UDim2.new(1,0,0,48),BackgroundColor3=T.Btn,ZIndex=6,Parent=MF}) cr(Hdr,14)
+mk("TextLabel",{Size=UDim2.new(1,-50,1,0),Position=UDim2.new(0,14,0,0),BackgroundTransparency=1,Text="🔍 Script Search",TextColor3=T.BtnText,TextSize=15,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=7,Parent=Hdr})
+local CloseBtn=mk("TextButton",{Size=UDim2.new(0,32,0,32),Position=UDim2.new(1,-40,0.5,-16),BackgroundColor3=T.Panel,Text="✕",TextColor3=T.Btn,TextSize=14,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(CloseBtn,6)
+local searchRow=mk("Frame",{Size=UDim2.new(1,-20,0,38),Position=UDim2.new(0,10,0,56),BackgroundColor3=T.Row,ZIndex=6,Parent=MF}) cr(searchRow,8)
+mk("UIStroke",{Color=T.Acc,Thickness=1,Parent=searchRow})
+local box=mk("TextBox",{Size=UDim2.new(1,-90,0,28),Position=UDim2.new(0,8,0.5,-14),BackgroundColor3=T.Input,PlaceholderText="Nhập tên game...",Text="",TextColor3=T.Text,PlaceholderColor3=T.Sub,TextSize=13,Font=Enum.Font.Gotham,ClearTextOnFocus=false,ZIndex=7,Parent=searchRow}) cr(box,6)
+mk("UIPadding",{PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),Parent=box})
+local searchBtn=mk("TextButton",{Size=UDim2.new(0,72,0,28),Position=UDim2.new(1,-80,0.5,-14),BackgroundColor3=T.Btn,Text="🔍 Tìm",TextColor3=T.BtnText,TextSize=12,Font=Enum.Font.GothamBold,ZIndex=7,Parent=searchRow}) cr(searchBtn,6)
+local statusLbl=mk("TextLabel",{Size=UDim2.new(1,-20,0,20),Position=UDim2.new(0,10,0,100),BackgroundTransparency=1,Text="Nhập tên game để tìm script no-key",TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=6,Parent=MF})
+local SF=mk("ScrollingFrame",{Size=UDim2.new(1,-16,1,-130),Position=UDim2.new(0,8,0,124),BackgroundTransparency=1,ScrollBarThickness=4,ScrollBarImageColor3=T.Acc,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ZIndex=6,Parent=MF})
+mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,6),Parent=SF})
+mk("UIPadding",{PaddingTop=UDim.new(0,4),PaddingBottom=UDim.new(0,4),Parent=SF})
+local activeMenu=nil
+local function closeActiveMenu() if activeMenu then activeMenu:Destroy() activeMenu=nil end end
+local function isNoKey(title,desc)
+	local t=(title or ""):lower()
+	local d=(desc or ""):lower()
+	for _,w in{"key","keylink","linkvertise","lootlabs","fluxus key","require key"}do
+		if t:find(w,1,true) or d:find(w,1,true) then return false end
+	end
+	return true
+end
+local function addResult(i,title,gameName,scriptCode,source)
+	local r=mk("Frame",{Size=UDim2.new(1,0,0,62),BackgroundColor3=T.Row,LayoutOrder=i,ZIndex=7,Parent=SF}) cr(r,8)
+	mk("UIStroke",{Color=Color3.fromRGB(180,180,210),Thickness=1,Parent=r})
+	local srcColor=source=="ScriptBlox" and Color3.fromRGB(80,140,255) or Color3.fromRGB(255,140,40)
+	local srcLbl=mk("TextLabel",{Size=UDim2.new(0,0,0,16),AutomaticSize=Enum.AutomaticSize.X,Position=UDim2.new(0,10,0,4),BackgroundColor3=srcColor,Text=" "..source.." ",TextColor3=Color3.fromRGB(255,255,255),TextSize=10,Font=Enum.Font.GothamBold,ZIndex=9,Parent=r}) cr(srcLbl,4)
+	mk("TextLabel",{Size=UDim2.new(1,-80,0,22),Position=UDim2.new(0,10,0,22),BackgroundTransparency=1,Text=title,TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=8,Parent=r})
+	mk("TextLabel",{Size=UDim2.new(1,-80,0,16),Position=UDim2.new(0,10,0,43),BackgroundTransparency=1,Text="🎮 "..(gameName or "Universal"),TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=8,Parent=r})
+	local playBtn=mk("TextButton",{Size=UDim2.new(0,40,0,40),Position=UDim2.new(1,-50,0.5,-20),BackgroundColor3=T.Btn,Text="▶",TextColor3=T.BtnText,TextSize=18,Font=Enum.Font.GothamBold,ZIndex=8,Parent=r}) cr(playBtn,8)
+	connectBtn(playBtn,function()
+		closeActiveMenu()
+		local mini=mk("Frame",{Size=UDim2.new(0,160,0,84),Position=UDim2.new(1,-170,0,0),BackgroundColor3=T.Btn,ZIndex=15,Parent=r}) cr(mini,8)
+		mk("UIStroke",{Color=T.Acc,Thickness=1.5,Parent=mini})
+		activeMenu=mini
+		local copyBtn=mk("TextButton",{Size=UDim2.new(1,-12,0,32),Position=UDim2.new(0,6,0,6),BackgroundColor3=T.Panel,Text="📋 Copy Loadstring",TextColor3=T.Text,TextSize=12,Font=Enum.Font.GothamBold,ZIndex=16,Parent=mini}) cr(copyBtn,6)
+		local loadBtn2=mk("TextButton",{Size=UDim2.new(1,-12,0,32),Position=UDim2.new(0,6,0,46),BackgroundColor3=T.Green,Text="▶ Load Script",TextColor3=Color3.fromRGB(255,255,255),TextSize=12,Font=Enum.Font.GothamBold,ZIndex=16,Parent=mini}) cr(loadBtn2,6)
+		connectBtn(copyBtn,function()
+			if scriptCode:find("^https?://") then
+				setclipboard('loadstring(game:HttpGet("'..scriptCode..'"))()')
+				notify("📋 Copied loadstring!")
+			else
+				setclipboard(scriptCode)
+				notify("📋 Copied script!")
+			end
+			closeActiveMenu()
+		end)
+		connectBtn(loadBtn2,function()
+			closeActiveMenu()
+			statusLbl.Text="⏳ Loading: "..title
+			local ok2,err=pcall(function()
+				if scriptCode:find("^https?://") then loadstring(game:HttpGet(scriptCode))()
+				else loadstring(scriptCode)() end
+			end)
+			if ok2 then notify("✅ Loaded: "..title)
+			else notify("❌ Lỗi: "..tostring(err):sub(1,40)) end
+			statusLbl.Text="Nhập tên game để tìm script no-key"
+		end)
+	end)
+end
+connectBtn(searchBtn,function()
+	local q=box.Text if q=="" then notify("❌ Nhập tên game!") return end
+	closeActiveMenu()
+	for _,v in SF:GetChildren()do if not v:IsA("UIListLayout") and not v:IsA("UIPadding") then v:Destroy() end end
+	statusLbl.Text="⏳ Đang tìm..."
+	local results={}
+	local ok1,data1=pcall(function()
+		return Http:JSONDecode(game:HttpGet("https://scriptblox-api-proxy.vercel.app/api/search?q="..Http:UrlEncode(q).."&max=15&mode=free&key=0"))
+	end)
+	if ok1 and data1 and data1.result and data1.result.scripts then
+		for _,s in ipairs(data1.result.scripts)do
+			if isNoKey(s.title,s.description) then
+				table.insert(results,{title=s.title or "Script",game=s.game and s.game.name or "Universal",script=s.script or "",source="ScriptBlox"})
+			end
+		end
+	end
+	local ok2,data2=pcall(function()
+		return Http:JSONDecode(game:HttpGet("https://rscripts.net/api/v2/scripts?q="..Http:UrlEncode(q).."&page=1&orderBy=views&free=true"))
+	end)
+	if ok2 and data2 and data2.scripts then
+		for _,s in ipairs(data2.scripts)do
+			if isNoKey(s.title,s.description) and s.rawScript then
+				table.insert(results,{title=s.title or "Script",game=s.game and s.game.name or "Universal",script=s.rawScript,source="RScripts"})
+			end
+		end
+	end
+	if #results==0 then statusLbl.Text="❌ Không tìm thấy script no-key!"
+	else
+		statusLbl.Text="✅ "..#results.." script no-key"
+		for i,v in ipairs(results)do addResult(i,v.title,v.game,v.script,v.source) end
+	end
+end)
+local menuOpen=false
+local function toggleMenu() menuOpen=not menuOpen MF.Visible=menuOpen end
+connectBtn(CloseBtn,toggleMenu) connectBtn(OpenBtn,toggleMenu)
+notify("✅ Script Search Loaded!")
