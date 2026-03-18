@@ -1,0 +1,179 @@
+local Players=game:GetService("Players")
+local UIS=game:GetService("UserInputService")
+local RS=game:GetService("RunService")
+local RF=game:GetService("ReplicatedStorage")
+local Player=Players.LocalPlayer
+local sg=Instance.new("ScreenGui")
+sg.Name="GymHub" sg.ResetOnSpawn=false
+local ok=pcall(function() sg.Parent=game:GetService("CoreGui") end)
+if not ok then sg.Parent=Player:WaitForChild("PlayerGui") end
+local function mk(cls,props) local o=Instance.new(cls) for k,v in pairs(props)do o[k]=v end return o end
+local function cr(p,r) mk("UICorner",{CornerRadius=UDim.new(0,r or 8),Parent=p}) end
+local T={
+	Bg=Color3.fromRGB(15,15,17),Side=Color3.fromRGB(20,20,23),
+	Main=Color3.fromRGB(25,25,28),Row=Color3.fromRGB(30,30,35),
+	Text=Color3.fromRGB(230,230,235),Sub=Color3.fromRGB(140,140,150),
+	Red=Color3.fromRGB(220,40,40),Green=Color3.fromRGB(40,200,80),
+	Sep=Color3.fromRGB(45,45,55),Input=Color3.fromRGB(35,35,42),
+	ON=Color3.fromRGB(40,200,80),OFF=Color3.fromRGB(60,60,70),
+}
+local function notify(msg)
+	local f=mk("Frame",{Size=UDim2.new(0,280,0,44),Position=UDim2.new(0.5,-140,0,10),BackgroundColor3=T.Row,ZIndex=20,Parent=sg})
+	cr(f,8) mk("UIStroke",{Color=T.Green,Thickness=1.5,Parent=f})
+	mk("TextLabel",{Size=UDim2.new(1,-12,1,0),Position=UDim2.new(0,6,0,0),BackgroundTransparency=1,Text=msg,TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,ZIndex=21,Parent=f})
+	game:GetService("Debris"):AddItem(f,3)
+end
+local function connectBtn(btn,cb)
+	local db=false
+	local function fire() if not db then db=true pcall(cb) task.delay(0.15,function()db=false end) end end
+	btn.MouseButton1Click:Connect(fire) btn.TouchTap:Connect(fire)
+end
+local OpenBtn=mk("TextButton",{Size=UDim2.new(0,48,0,48),Position=UDim2.new(0,14,0.5,-24),BackgroundColor3=T.Red,Text="☰",TextColor3=Color3.fromRGB(255,255,255),TextSize=22,Font=Enum.Font.GothamBold,ZIndex=10,Parent=sg})
+cr(OpenBtn,10) mk("UIStroke",{Color=T.Green,Thickness=2,Parent=OpenBtn})
+local drag,dInput,dStart,dPos=false
+OpenBtn.InputBegan:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseButton1 then
+		drag=true dStart=i.Position dPos=OpenBtn.Position
+		i.Changed:Connect(function()if i.UserInputState==Enum.UserInputState.End then drag=false end end)
+	end
+end)
+OpenBtn.InputChanged:Connect(function(i)
+	if i.UserInputType==Enum.UserInputType.Touch or i.UserInputType==Enum.UserInputType.MouseMovement then dInput=i end
+end)
+UIS.InputChanged:Connect(function(i)
+	if i==dInput and drag then
+		local d=i.Position-dStart
+		OpenBtn.Position=UDim2.new(dPos.X.Scale,dPos.X.Offset+d.X,dPos.Y.Scale,dPos.Y.Offset+d.Y)
+	end
+end)
+local MF=mk("Frame",{Size=UDim2.new(0,500,0,440),Position=UDim2.new(0.5,-250,0.5,-220),BackgroundColor3=T.Bg,Visible=false,ZIndex=5,Parent=sg})
+cr(MF,12) mk("UIStroke",{Color=T.Green,Thickness=2,Parent=MF})
+local Hdr=mk("Frame",{Size=UDim2.new(1,0,0,42),BackgroundColor3=T.Side,ZIndex=6,Parent=MF}) cr(Hdr,12)
+local Logo=mk("TextLabel",{Size=UDim2.new(0,34,0,34),Position=UDim2.new(0,5,0.5,-17),BackgroundColor3=T.Red,Text="G",TextColor3=Color3.fromRGB(255,255,255),TextSize=18,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(Logo,8)
+mk("TextLabel",{Size=UDim2.new(1,-120,1,0),Position=UDim2.new(0,44,0,0),BackgroundTransparency=1,Text="⚡ Gym Hub",TextColor3=T.Red,TextSize=14,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=7,Parent=Hdr})
+local XBtn=mk("TextButton",{Size=UDim2.new(0,28,0,28),Position=UDim2.new(1,-34,0.5,-14),BackgroundColor3=T.Red,Text="✕",TextColor3=Color3.fromRGB(255,255,255),TextSize=13,Font=Enum.Font.GothamBold,ZIndex=7,Parent=Hdr}) cr(XBtn,6)
+local SideBar=mk("ScrollingFrame",{Size=UDim2.new(0,150,1,-42),Position=UDim2.new(0,0,0,42),BackgroundColor3=T.Side,ScrollBarThickness=0,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ZIndex=6,Parent=MF})
+mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,2),Parent=SideBar})
+mk("UIPadding",{PaddingTop=UDim.new(0,6),PaddingBottom=UDim.new(0,6),PaddingLeft=UDim.new(0,4),PaddingRight=UDim.new(0,4),Parent=SideBar})
+local CF=mk("Frame",{Size=UDim2.new(1,-150,1,-42),Position=UDim2.new(0,150,0,42),BackgroundColor3=T.Main,ZIndex=6,Parent=MF})
+local SF=mk("ScrollingFrame",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,ScrollBarThickness=3,ScrollBarImageColor3=T.Red,CanvasSize=UDim2.new(0,0,0,0),AutomaticCanvasSize=Enum.AutomaticSize.Y,ZIndex=7,Parent=CF})
+mk("UIPadding",{PaddingTop=UDim.new(0,8),PaddingBottom=UDim.new(0,8),PaddingLeft=UDim.new(0,8),PaddingRight=UDim.new(0,8),Parent=SF})
+mk("UIListLayout",{SortOrder=Enum.SortOrder.LayoutOrder,Padding=UDim.new(0,5),Parent=SF})
+local TabBtns,Pages,ActiveTab,Widgets={},{},{},{}
+local function clearW()for _,v in pairs(Widgets)do v:Destroy()end Widgets={} end
+local function addSep(title)
+	local f=mk("Frame",{Size=UDim2.new(1,0,0,24),BackgroundTransparency=1,ZIndex=8,Parent=SF})
+	mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=title,TextColor3=T.Red,TextSize=11,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=f})
+	mk("Frame",{Size=UDim2.new(1,0,0,1),Position=UDim2.new(0,0,1,-1),BackgroundColor3=T.Red,BorderSizePixel=0,ZIndex=9,Parent=f})
+	table.insert(Widgets,f)
+end
+local function addNumAction(label,desc,btnText,remote,remotetype)
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,80),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,0,0,22),Position=UDim2.new(0,10,0,4),BackgroundTransparency=1,Text=label,TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,0,0,16),Position=UDim2.new(0,10,0,24),BackgroundTransparency=1,Text=desc or "",TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	local box=mk("TextBox",{Size=UDim2.new(1,-110,0,26),Position=UDim2.new(0,10,0,46),BackgroundColor3=T.Input,PlaceholderText="Nhập số...",Text="5000000000000000",TextColor3=T.Text,PlaceholderColor3=T.Sub,TextSize=12,Font=Enum.Font.Gotham,ClearTextOnFocus=false,ZIndex=9,Parent=row}) cr(box,6)
+	mk("UIPadding",{PaddingLeft=UDim.new(0,6),PaddingRight=UDim.new(0,6),Parent=box})
+	local setBtn=mk("TextButton",{Size=UDim2.new(0,82,0,26),Position=UDim2.new(1,-90,0,46),BackgroundColor3=T.Red,Text=btnText or "▶ Set",TextColor3=Color3.fromRGB(255,255,255),TextSize=11,Font=Enum.Font.GothamBold,ZIndex=9,Parent=row}) cr(setBtn,6)
+	connectBtn(setBtn,function()
+		local n=tonumber(box.Text)
+		if not n then notify("❌ Nhập số hợp lệ!") return end
+		local ok2,err=pcall(function()
+			local r=remote
+			if remotetype=="RF" then r:InvokeServer(n)
+			else r:FireServer(n) end
+		end)
+		if ok2 then notify("✅ "..label..": "..box.Text)
+		else notify("❌ Lỗi: "..tostring(err):sub(1,40)) end
+	end)
+	table.insert(Widgets,row)
+end
+local function addSpam(label,desc,remote,remotetype,args)
+	local row=mk("Frame",{Size=UDim2.new(1,0,0,52),BackgroundColor3=T.Row,ZIndex=8,Parent=SF}) cr(row,8)
+	mk("UIStroke",{Color=T.Sep,Thickness=1,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,-72,0,24),Position=UDim2.new(0,10,0,4),BackgroundTransparency=1,Text=label,TextColor3=T.Text,TextSize=13,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	mk("TextLabel",{Size=UDim2.new(1,-72,0,18),Position=UDim2.new(0,10,0,26),BackgroundTransparency=1,Text=desc or "",TextColor3=T.Sub,TextSize=11,Font=Enum.Font.Gotham,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=9,Parent=row})
+	local state=false
+	local conn=nil
+	local pill=mk("Frame",{Size=UDim2.new(0,50,0,24),Position=UDim2.new(1,-60,0.5,-12),ZIndex=9,Parent=row}) cr(pill,12)
+	local knob=mk("Frame",{Size=UDim2.new(0,18,0,18),Position=UDim2.new(0,3,0.5,-9),BackgroundColor3=Color3.fromRGB(255,255,255),ZIndex=10,Parent=pill}) cr(knob,9)
+	local function upd()
+		pill.BackgroundColor3=state and T.ON or T.OFF
+		knob.Position=state and UDim2.new(1,-21,0.5,-9) or UDim2.new(0,3,0.5,-9)
+	end
+	upd()
+	local pillBtn=mk("TextButton",{Size=UDim2.new(0,50,0,52),Position=UDim2.new(1,-60,0,0),BackgroundTransparency=1,Text="",ZIndex=11,Parent=row})
+	connectBtn(pillBtn,function()
+		state=not state upd()
+		if state then
+			conn=RS.Heartbeat:Connect(function()
+				pcall(function()
+					if remotetype=="RF" then
+						if args then remote:InvokeServer(table.unpack(args))
+						else remote:InvokeServer() end
+					else
+						if args then remote:FireServer(table.unpack(args))
+						else remote:FireServer() end
+					end
+				end)
+			end)
+		else
+			if conn then conn:Disconnect() conn=nil end
+		end
+	end)
+	table.insert(Widgets,row)
+end
+local function renderTab(name) clearW() local fn=Pages[name] if fn then fn() end end
+local function addTab(name,icon,fn)
+	Pages[name]=fn
+	local btn=mk("TextButton",{Size=UDim2.new(1,0,0,40),BackgroundTransparency=1,Text="",ZIndex=7,Parent=SideBar})
+	local accent=mk("Frame",{Size=UDim2.new(0,3,0.7,0),Position=UDim2.new(0,0,0.15,0),BackgroundColor3=T.Red,Visible=false,ZIndex=8,Parent=btn}) cr(accent,2)
+	mk("TextLabel",{Size=UDim2.new(1,0,1,0),BackgroundTransparency=1,Text=icon.." "..name,TextColor3=T.Sub,TextSize=12,Font=Enum.Font.GothamBold,TextXAlignment=Enum.TextXAlignment.Left,ZIndex=8,Parent=btn})
+	mk("UIPadding",{PaddingLeft=UDim.new(0,10),Parent=btn})
+	TabBtns[name]={btn=btn,accent=accent}
+	connectBtn(btn,function()
+		for n,tb in pairs(TabBtns)do tb.accent.Visible=false tb.btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Sub end
+		accent.Visible=true btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Text
+		ActiveTab=name renderTab(name)
+	end)
+end
+local menuOpen=false
+local function toggleMenu() menuOpen=not menuOpen MF.Visible=menuOpen if menuOpen and ActiveTab~="" then renderTab(ActiveTab) end end
+connectBtn(XBtn,function() if menuOpen then toggleMenu() end end)
+connectBtn(OpenBtn,function() if not menuOpen then toggleMenu() end end)
+local SC=RF.SharedCore
+addTab("Weight","💪",function()
+	addSep("Set Weight")
+	addNumAction("Set Weight","Chỉnh cân nặng trực tiếp","▶ Set",SC.Functions.SetWeight,"RF")
+	addSep("Workout Spam")
+	addSpam("Spam WorkoutRep","Spam rep tập gym",SC.Events.WorkoutRep,"RE")
+	addSpam("Spam StartWorkout","Bắt đầu workout liên tục",SC.Events.StartWorkout,"RE")
+end)
+addTab("Items","🎁",function()
+	addSep("Open")
+	addSpam("Spam Open Chest","Mở chest liên tục",SC.Functions.OpenChest,"RF")
+	addSpam("Spam Open Egg","Mở egg liên tục",SC.Functions.OpenEgg,"RF")
+	addSep("Daily & Spin")
+	addSpam("Spam Daily Rewards","Claim daily liên tục",SC.Functions.DailyRewards,"RF")
+	addSpam("Spam Spin Wheel","Spin wheel liên tục",SC.Functions.SpinWheel,"RF")
+	addSep("Potion")
+	addSpam("Spam Use Potion","Dùng potion liên tục",SC.Functions.UsePotion,"RF")
+end)
+addTab("World","🌍",function()
+	addSep("World")
+	addNumAction("Unlock World","Mở thế giới theo số","▶ Unlock",SC.Functions.UnlockWorld,"RF")
+	addNumAction("Change World","Chuyển thế giới theo số","▶ Go",SC.Functions.ChangeWorld,"RF")
+	addSep("Purchase")
+	addNumAction("Purchase Weight","Mua weight theo số","▶ Buy",SC.Functions.PurchaseWeight,"RF")
+	addNumAction("Purchase Character","Mua nhân vật theo ID","▶ Buy",SC.Functions.PurchaseCharacter,"RF")
+end)
+local function clickFirst()
+	local name=nil for n,_ in pairs(Pages)do name=n break end
+	if name then
+		local tb=TabBtns[name]
+		if tb then tb.accent.Visible=true tb.btn:FindFirstChildOfClass("TextLabel").TextColor3=T.Text ActiveTab=name renderTab(name) end
+	end
+end
+clickFirst()
+notify("✅ Gym Hub Loaded!")
+print("THIÊN ANH ĐẸP TRAI LẮM")
